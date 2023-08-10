@@ -19,13 +19,16 @@ struct Args {
     #[structopt(short = "l", long = "list", help = "Print the list of files in both groups, instead of unpacking")]
     list: bool,
 
+    #[structopt(short = "t", long = "text-only", help = "Only extract text files")]
+    textonly: bool,
+
     #[structopt(short = "1", long = "list-1", help = "Print the list of files in group 1, instead of unpacking (overrides l)")]
     list1: bool,
 
     #[structopt(short = "2", long = "list-2", help = "Print the list of files in group 2, instead of unpacking (overrides l, 1)")]
     list2: bool,
 
-    #[structopt(short = "o", long = "output", parse(from_os_str), default_value = ".", help = "Directory path to unpack to. Creates directories 1 and 2 for the groups.")]
+    #[structopt(short = "o", long = "output", parse(from_os_str), default_value = ".", help = "Directory path to unpack to. Creates directories 0 and 1 for the groups.")]
     output: PathBuf,
 
     #[structopt(short = "d", long = "debug", help = "Output diagnostic data for debugging")]
@@ -54,6 +57,7 @@ fn list_files_in_group(ia: &IceArchive, group: Group, indent: bool) -> Result<()
 }
 
 fn write_group_iter(iter: IceGroupIter, out: &Path) -> Result<(), anyhow::Error> {
+    let args = Args::from_args();
     for f in iter {
         let name_str = match f.name().context("Can't write file due to invalid file name") {
             Ok(n) => n,
@@ -63,8 +67,18 @@ fn write_group_iter(iter: IceGroupIter, out: &Path) -> Result<(), anyhow::Error>
             },
         };
         let path = out.join(name_str);
-        std::fs::write(&path, f.data())
+        if args.textonly {
+            if name_str.contains(".text")
+            {
+            std::fs::write(&path, f.data())
             .with_context(|| format!("Failed to write file {}", path.to_string_lossy()))?;
+            }
+        }
+        else
+        {
+            std::fs::write(&path, f.data())
+            .with_context(|| format!("Failed to write file {}", path.to_string_lossy()))?;
+        }
     }
     Ok(())
 }
